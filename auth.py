@@ -4,6 +4,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from gmail import SCOPES
+from dotenv import load_dotenv
+load_dotenv()
 
 router = APIRouter()
 flow_store = {}
