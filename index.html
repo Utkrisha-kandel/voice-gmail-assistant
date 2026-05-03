@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Voice Gmail Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #1e1e2e;
+    --accent: #7c6af7;
+    --accent2: #f76a8a;
+    --text: #e8e8f0;
+    --muted: #555570;
+    --listening: #4ade80;
+    --speaking: #facc15;
+    --thinking: #60a5fa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /* Ambient background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 20%, rgba(124,106,247,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 80% 80%, rgba(247,106,138,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  .logo {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+
+  .status-pill.listening .status-dot { background: var(--listening); box-shadow: 0 0 8px var(--listening); animation: pulse 1.5s infinite; }
+  .status-pill.listening { color: var(--listening); border-color: rgba(74,222,128,0.2); }
+  .status-pill.speaking .status-dot { background: var(--speaking); box-shadow: 0 0 8px var(--speaking); }
+  .status-pill.speaking { color: var(--speaking); border-color: rgba(250,204,21,0.2); }
+  .status-pill.thinking .status-dot { background: var(--thinking); box-shadow: 0 0 8px var(--thinking); animation: pulse 0.8s infinite; }
+  .status-pill.thinking { color: var(--thinking); border-color: rgba(96,165,250,0.2); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Orb visualizer */
+  .orb-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1rem 0 2rem;
+    height: 160px;
+  }
+
+  .orb {
+    position: relative;
+    width: 120px;
+    height: 120px;
+  }
+
+  .orb-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(124,106,247,0.2);
+    animation: spin 8s linear infinite;
+  }
+
+  .orb-ring:nth-child(2) {
+    inset: 10px;
+    border-color: rgba(247,106,138,0.15);
+    animation: spin 12s linear infinite reverse;
+  }
+
+  .orb-core {
+    position: absolute;
+    inset: 20px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #9f92ff, #7c6af7 50%, #3d2eb5);
+    box-shadow: 0 0 30px rgba(124,106,247,0.4), inset 0 0 20px rgba(255,255,255,0.05);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+
+  .orb.listening .orb-core {
+    animation: breathe 1.5s ease-in-out infinite;
+    box-shadow: 0 0 50px rgba(74,222,128,0.5), inset 0 0 20px rgba(255,255,255,0.05);
+    background: radial-gradient(circle at 35% 35%, #7bf7a8, #4ade80 50%, #16a34a);
+  }
+
+  .orb.speaking .orb-core {
+    animation: speakPulse 0.4s ease-in-out infinite alternate;
+    box-shadow: 0 0 50px rgba(250,204,21,0.5), inset 0 0 20px rgba(255,255,255,0.05);
+    background: radial-gradient(circle at 35% 35%, #fef08a, #facc15 50%, #ca8a04);
+  }
+
+  .orb.thinking .orb-core {
+    animation: spin 2s linear infinite;
+    box-shadow: 0 0 50px rgba(96,165,250,0.5), inset 0 0 20px rgba(255,255,255,0.05);
+    background: radial-gradient(circle at 35% 35%, #93c5fd, #60a5fa 50%, #1d4ed8);
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+  }
+
+  @keyframes speakPulse {
+    from { transform: scale(0.95); }
+    to { transform: scale(1.08); }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Sound bars (shown when listening) */
+  .sound-bars {
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    height: 20px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .orb.listening .sound-bars { opacity: 1; }
+
+  .bar {
+    width: 3px;
+    background: var(--listening);
+    border-radius: 2px;
+    animation: barBounce 0.6s ease-in-out infinite alternate;
+  }
+
+  .bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .bar:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+  .bar:nth-child(3) { height: 20px; animation-delay: 0.05s; }
+  .bar:nth-child(4) { height: 14px; animation-delay: 0.15s; }
+  .bar:nth-child(5) { height: 6px; animation-delay: 0.08s; }
+
+  @keyframes barBounce {
+    from { transform: scaleY(0.3); }
+    to { transform: scaleY(1); }
+  }
+
+  /* Transcript area */
+  .transcript-area {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-right: 0.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .message {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { align-items: flex-end; }
+  .message.assistant { align-items: flex-start; }
+
+  .msg-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .msg-bubble {
+    max-width: 85%;
+    padding: 0.75rem 1rem;
+    border-radius: 16px;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .message.user .msg-bubble {
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.assistant .msg-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+
+  .mic-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .mute-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mute-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .mute-btn.muted { border-color: var(--accent2); color: var(--accent2); background: rgba(247,106,138,0.08); }
+
+  /* Auth overlay */
+  #auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 1.5rem;
+  }
+
+  #auth-overlay h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+
+  #auth-overlay p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    text-align: center;
+    max-width: 300px;
+    line-height: 1.6;
+  }
+
+  .auth-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.8rem 2rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+
+  .auth-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+</style>
+</head>
+<body>
+
+<div id="auth-overlay">
+  <div class="logo">📬 Voice Gmail</div>
+  <h2>Connect your Gmail</h2>
+  <p>Sign in with Google to let the assistant read and send emails on your behalf.</p>
+  <button class="auth-btn" onclick="window.location.href='/login'">Sign in with Google</button>
+</div>
+
+<div class="container">
+  <header>
+    <div class="logo">📬 Voice Gmail</div>
+    <div class="status-pill" id="status-pill">
+      <div class="status-dot"></div>
+      <span id="status-text">Starting...</span>
+    </div>
+  </header>
+
+  <div class="orb-wrap">
+    <div class="orb" id="orb">
+      <div class="orb-ring"></div>
+      <div class="orb-ring"></div>
+      <div class="orb-core"></div>
+      <div class="sound-bars">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="transcript-area" id="transcript"></div>
+
+  <div class="bottom-bar">
+    <span class="mic-hint" id="mic-hint">Speak anytime — I'm always listening</span>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🎙 Mute</button>
+  </div>
+</div>
+
+<script>
+  let muted = false;
+  let isSpeaking = false;
+  let isProcessing = false;
+  let mediaStream = null;
+  let audioContext = null;
+  let analyser = null;
+  let silenceTimer = null;
+  let recorder = null;
+  let chunks = [];
+  let isRecording = false;
+
+  const SILENCE_THRESHOLD = 10;
+  const SILENCE_DURATION = 800;
+  const MIN_SPEECH_DURATION = 300;
+  let speechStart = null;
+
+  const orb = document.getElementById('orb');
+  const statusPill = document.getElementById('status-pill');
+  const statusText = document.getElementById('status-text');
+  const transcript = document.getElementById('transcript');
+  const micHint = document.getElementById('mic-hint');
+  const muteBtn = document.getElementById('mute-btn');
+
+  function setStatus(state, text) {
+    orb.className = 'orb ' + state;
+    statusPill.className = 'status-pill ' + state;
+    statusText.textContent = text;
+  }
+
+  function addMessage(role, text) {
+    const div = document.createElement('div');
+    div.className = 'message ' + role;
+    div.innerHTML = `
+      <div class="msg-label">${role === 'user' ? 'You' : 'Assistant'}</div>
+      <div class="msg-bubble">${text}</div>
+    `;
+    transcript.appendChild(div);
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+
+  function toggleMute() {
+    muted = !muted;
+    muteBtn.textContent = muted ? '🔇 Unmute' : '🎙 Mute';
+    muteBtn.classList.toggle('muted', muted);
+    micHint.textContent = muted ? 'Microphone muted' : 'Speak anytime — I\'m always listening';
+    if (muted) setStatus('', 'Muted');
+    else setStatus('listening', 'Listening');
+  }
+
+  async function startListening() {
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      source.connect(analyser);
+      setStatus('listening', 'Listening');
+      detectSpeech();
+    } catch (e) {
+      setStatus('', 'Mic denied');
+      micHint.textContent = 'Please allow microphone access and refresh.';
+    }
+  }
+
+  function getVolume() {
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(data);
+    return data.reduce((a, b) => a + b, 0) / data.length;
+  }
+
+  function detectSpeech() {
+    if (muted || isSpeaking || isProcessing) {
+      setTimeout(detectSpeech, 100);
+      return;
+    }
+
+    const vol = getVolume();
+
+    if (vol > SILENCE_THRESHOLD && !isRecording) {
+      startRecording();
+    }
+
+    setTimeout(detectSpeech, 50);
+  }
+
+  function startRecording() {
+    isRecording = true;
+    speechStart = Date.now();
+    chunks = [];
+    recorder = new MediaRecorder(mediaStream);
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = handleRecordingStop;
+    recorder.start();
+    setStatus('listening', 'Hearing you...');
+
+    monitorSilence();
+  }
+
+  function monitorSilence() {
+    if (!isRecording) return;
+    const vol = getVolume();
+    if (vol < SILENCE_THRESHOLD) {
+      if (!silenceTimer) {
+        silenceTimer = setTimeout(() => {
+          if (isRecording) stopRecording();
+        }, SILENCE_DURATION);
+      }
+    } else {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
+    }
+    setTimeout(monitorSilence, 100);
+  }
+
+  function stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+    recorder.stop();
+  }
+
+  async function handleRecordingStop() {
+    const duration = Date.now() - speechStart;
+    if (duration < MIN_SPEECH_DURATION) {
+        setStatus('listening', 'Listening');
+        return;
+    }
+
+    isProcessing = true;
+    setStatus('thinking', 'Thinking...');
+
+    const blob = new Blob(chunks, { type: 'audio/webm' });
+    const formData = new FormData();
+    formData.append('audio', blob, 'audio.webm');
+
+    try {
+        console.time('transcribe');  // ← ADD
+        const transcribeRes = await fetch('/transcribe', { method: 'POST', body: formData });
+        const { transcript: userText } = await transcribeRes.json();
+        console.timeEnd('transcribe');  // ← ADD
+
+        if (!userText || userText.trim().length < 2) {
+            isProcessing = false;
+            setStatus('listening', 'Listening');
+            return;
+        }
+
+        addMessage('user', userText);
+
+        console.time('chat');  // ← ADD
+        const chatRes = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userText })
+        });
+        const { reply, auth } = await chatRes.json();
+        console.timeEnd('chat');  // ← ADD
+
+      if (!auth) {
+        document.getElementById('auth-overlay').style.display = 'flex';
+        return;
+      }
+
+      addMessage('assistant', reply);
+      speakReply(reply);
+
+    } catch (e) {
+      console.error(e);
+      isProcessing = false;
+      setStatus('listening', 'Listening');
+    }
+  }
+
+  function speakReply(text) {
+    isSpeaking = true;
+    isProcessing = false;
+    setStatus('speaking', 'Speaking...');
+
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';  // ← force English
+    utter.rate = 1.05;
+    utter.pitch = 1;
+
+    const voices = speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+        v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Natural'))
+    ) || voices.find(v => v.lang === 'en-US')  // fallback: any en-US voice
+      || voices.find(v => v.lang.startsWith('en')); // fallback: any English voice
+
+    if (preferred) utter.voice = preferred;
+
+    utter.onend = () => {
+        isSpeaking = false;
+        setTimeout(() => setStatus('listening', 'Listening'), 300);
+    };
+
+    speechSynthesis.speak(utter);
+}
+  // Check auth on load
+  async function init() {
+    const res = await fetch('/check-auth');
+    const { authenticated } = await res.json();
+    if (authenticated) {
+      document.getElementById('auth-overlay').style.display = 'none';
+      // Load voices
+      speechSynthesis.getVoices();
+      speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+      await startListening();
+      addMessage('assistant', "Hi! Your Gmail assistant is ready. Just speak and I'll help you manage your inbox.");
+      speakReply("Hi! Your Gmail assistant is ready. Just speak and I'll help you manage your inbox.");
+    } else {
+      setStatus('', 'Not connected');
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
