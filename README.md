@@ -1,56 +1,38 @@
-<<<<<<< HEAD
 Voice Gmail Assistant
 
-I built this because I wanted to check and send emails without 
-typing. Just talk to it and it handles the rest.
-
+I built this because I wanted to check and send emails without typing. Just talk to it and it handles the rest.
 
 What it does
 
-- Listen to your voice and understand what you want
-- Read out your latest emails
-- Send emails on your behalf
-- Connects securely to your Gmail account
-
-
+Listen to your voice and understand what you want
+Read out your latest emails
+Send emails on your behalf
+Connects securely to your Gmail account
 How it works
 
-You speak → Groq transcribes it → LLaMA 3 figures out what 
-you want → Gmail API reads or sends the email → browser speaks 
-the reply back to you.
-
+You speak → Groq transcribes it → LLaMA 3 figures out what you want → Gmail API reads or sends the email → browser speaks the reply back to you.
 
 Stack
 
-- FastAPI for the backend
-- Groq for speech to text and AI
-- Gmail API for email access
-- Google OAuth2 for login
-- Browser's built-in TTS for speaking responses
-
-
+FastAPI for the backend
+Groq for speech to text and AI
+Gmail API for email access
+Google OAuth2 for login
+Browser's built-in TTS for speaking responses
 Running it locally
 
-1. Clone the repo and install dependencies
-   pip install -r requirements.txt
+Clone the repo and install dependencies pip install -r requirements.txt
 
-2. Get a Groq API key from groq.com and add it to .env
-   GROQ_API_KEY=your_key_here
+Get a Groq API key from groq.com and add it to .env GROQ_API_KEY=your_key_here
 
-3. Download credentials.json from Google Cloud Console
-   and place it in the project root
+Download credentials.json from Google Cloud Console and place it in the project root
 
-4. Run it
-   python main.py
+Run it python main.py
 
-5. Go to http://localhost:8000 and connect your Gmail
-
+Go to http://localhost:8000 and connect your Gmail
 
 Notes
 
-- credentials.json is not pushed to GitHub for obvious reasons
-- If you see a Google warning screen, click Advanced and proceed
-- Works best in Chrome
-=======
-# voice-gmail-assistant
->>>>>>> f878ab2d8a31a9e81185082648e27c2533b0a56e
+credentials.json is not pushed to GitHub for obvious reasons
+If you see a Google warning screen, click Advanced and proceed
+Works best in Chrome
