@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Voice Gmail Assistant
 
 I built this because I wanted to check and send emails without 
@@ -50,3 +51,6 @@ Notes
 - credentials.json is not pushed to GitHub for obvious reasons
 - If you see a Google warning screen, click Advanced and proceed
 - Works best in Chrome
+=======
+# voice-gmail-assistant
+>>>>>>> f878ab2d8a31a9e81185082648e27c2533b0a56e
